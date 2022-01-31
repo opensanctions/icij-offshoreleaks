@@ -102,17 +102,21 @@ def emit_entity(proxy: EntityProxy):
 
 def dump_entities(out_file: click.File):
     log.info("Dumping %d entities to: %s", len(ENTITIES), out_file.name)
-    for entity in ENTITIES.values():
+    for idx, entity in enumerate(ENTITIES.values()):
         assert not entity.schema.abstract, entity
         write_object(out_file, entity)
+        if idx > 0 and idx % 10000 == 0:
+            log.info("Dumped %d entities...", idx)
 
 
 def read_rows(zip, file_name):
     with zip.open(file_name) as zfh:
         fh = io.TextIOWrapper(zfh)
         reader = DictReader(fh, delimiter=",", quotechar='"')
-        for row in reader:
+        for idx, row in enumerate(reader):
             yield {k: stringify(v) for (k, v) in row.items()}
+            if idx > 0 and idx % 10000 == 0:
+                log.info("[%s] Read %d rows...", file_name, idx)
 
 
 def make_row_entity(row, schema):
