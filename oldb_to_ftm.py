@@ -4,7 +4,7 @@ import click
 import logging
 from typing import Dict
 from csv import DictReader
-from functools import cache
+from functools import cache, lru_cache
 from zipfile import ZipFile
 from datetime import datetime
 from normality import stringify, slugify
@@ -35,7 +35,7 @@ def load_lookups():
         return get_lookups(data)
 
 
-@cache
+@lru_cache(maxsize=10000)
 def lookup(section, value):
     result = load_lookups()[section].match(value)
     if result is None:
@@ -49,7 +49,7 @@ def make_entity_id(id):
     return f"icijol-{id}"
 
 
-@cache
+@lru_cache(maxsize=1000)
 def parse_date(text):
     if text is None:
         return None
@@ -65,7 +65,7 @@ def parse_date(text):
     # log.error("Unparseable date: %s", text)
 
 
-@cache
+@lru_cache(maxsize=10000)
 def parse_countries(text):
     if text is None:
         return None
@@ -100,25 +100,25 @@ def emit_entity(proxy: EntityProxy):
     ENTITIES[proxy.id] = proxy
 
 
-def dump_entities(out_path: str):
-    log.info("Dumping %d entities to: %s", len(ENTITIES), out_path)
-    with open(out_path, "w") as fh:
-        for idx, entity in enumerate(ENTITIES.values()):
-            assert not entity.schema.abstract, entity
-            write_object(fh, entity)
-            if idx > 0 and idx % 10000 == 0:
-                log.info("Dumped %d entities...", idx)
-                fh.flush()
+def dump_nodes(fh: io.TextIOWrapper):
+    log.info("Dumping %d nodes to: %s", len(ENTITIES), fh.name)
+    for idx, entity in enumerate(ENTITIES.values()):
+        assert not entity.schema.abstract, entity
+        write_object(fh, entity)
+        if idx > 0 and idx % 10000 == 0:
+            log.info("Dumped %d nodes...", idx)
+            fh.flush()
 
 
-def read_rows(zip, file_name):
-    with zip.open(file_name) as zfh:
-        fh = io.TextIOWrapper(zfh)
-        reader = DictReader(fh, delimiter=",", quotechar='"')
-        for idx, row in enumerate(reader):
-            yield {k: stringify(v) for (k, v) in row.items()}
-            if idx > 0 and idx % 10000 == 0:
-                log.info("[%s] Read %d rows...", file_name, idx)
+def read_rows(zip_path, file_name):
+    with ZipFile(zip_path, "r") as zip:
+        with zip.open(file_name) as zfh:
+            fh = io.TextIOWrapper(zfh)
+            reader = DictReader(fh, delimiter=",", quotechar='"')
+            for idx, row in enumerate(reader):
+                yield {k: stringify(v) for (k, v) in row.items()}
+                if idx > 0 and idx % 10000 == 0:
+                    log.info("[%s] Read %d rows...", file_name, idx)
 
 
 def make_row_entity(row, schema):
@@ -214,7 +214,7 @@ def make_row_address(row):
 LINK_SEEN = set()
 
 
-def make_row_relationship(row):
+def make_row_relationship(row, fh):
     # print(row)
     # return
     _type = row.pop("_type")
@@ -241,7 +241,9 @@ def make_row_relationship(row):
         entity.id = start
         entity.add(res.prop, end)
         entity.add("publisher", source_id)
+        emit_entity(entity)
         # print(type_, res.prop, ENTITIES.get(start), ENTITIES.get(end))
+        return
 
     if res.schema is not None:
         start_date = parse_date(row.pop("start_date"))
@@ -257,7 +259,8 @@ def make_row_relationship(row):
         rel.add("publisher", source_id)
         rel.add(res.start, start)
         rel.add(res.end, end)
-        emit_entity(rel)
+        # emit_entity(rel)
+        write_object(fh, rel)
 
         # this turns legalentity into organization in some cases
         start_ent = model.make_entity(rel.schema.get(res.start).range)
@@ -276,32 +279,33 @@ def make_row_relationship(row):
 @click.argument("out_path", type=click.Path(writable=True))
 def make_db(zip_file, out_path):
     logging.basicConfig(level=logging.INFO)
-    with ZipFile(zip_file, "r") as zip:
-        log.info("Loading: nodes-entities.csv...")
-        for row in read_rows(zip, "nodes-entities.csv"):
-            make_row_entity(row, "Company")
 
-        log.info("Loading: nodes-officers.csv...")
-        for row in read_rows(zip, "nodes-officers.csv"):
-            make_row_entity(row, "LegalEntity")
+    log.info("Loading: nodes-entities.csv...")
+    for row in read_rows(zip_file, "nodes-entities.csv"):
+        make_row_entity(row, "Company")
 
-        log.info("Loading: nodes-intermediaries.csv...")
-        for row in read_rows(zip, "nodes-intermediaries.csv"):
-            make_row_entity(row, "LegalEntity")
+    log.info("Loading: nodes-officers.csv...")
+    for row in read_rows(zip_file, "nodes-officers.csv"):
+        make_row_entity(row, "LegalEntity")
 
-        log.info("Loading: nodes-others.csv...")
-        for row in read_rows(zip, "nodes-others.csv"):
-            make_row_entity(row, "LegalEntity")
+    log.info("Loading: nodes-intermediaries.csv...")
+    for row in read_rows(zip_file, "nodes-intermediaries.csv"):
+        make_row_entity(row, "LegalEntity")
 
-        log.info("Loading: nodes-addresses.csv...")
-        for row in read_rows(zip, "nodes-addresses.csv"):
-            make_row_address(row)
+    log.info("Loading: nodes-others.csv...")
+    for row in read_rows(zip_file, "nodes-others.csv"):
+        make_row_entity(row, "LegalEntity")
 
+    log.info("Loading: nodes-addresses.csv...")
+    for row in read_rows(zip_file, "nodes-addresses.csv"):
+        make_row_address(row)
+
+    with open(out_path, "w") as fh:
         log.info("Loading: relationships.csv...")
-        for row in read_rows(zip, "relationships.csv"):
-            make_row_relationship(row)
+        for row in read_rows(zip_file, "relationships.csv"):
+            make_row_relationship(row, fh)
 
-    dump_entities(out_path)
+        dump_nodes(fh, out_path)
 
 
 if __name__ == "__main__":
