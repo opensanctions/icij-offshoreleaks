@@ -20,7 +20,11 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
         run: |
           sudo apt-get install -y -qq libicu-dev wget
+          pip install pyicu awscli
           pip install -r requirements.txt
       - name: Convert the data
         run: |
           make full
+      - name: Publish data to data.opensanctions.org
+        run: |
+          aws s3 cp --quiet --no-progress --cache-control "public, max-age=84600" --metadata-directive REPLACE --acl public-read data/full-oldb.ijson s3://data.opensanctions.org/contrib/icij-offshoreleaks/full-oldb.json
