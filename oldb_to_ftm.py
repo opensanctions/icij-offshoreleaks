@@ -100,13 +100,15 @@ def emit_entity(proxy: EntityProxy):
     ENTITIES[proxy.id] = proxy
 
 
-def dump_entities(out_file: click.File):
-    log.info("Dumping %d entities to: %s", len(ENTITIES), out_file.name)
-    for idx, entity in enumerate(ENTITIES.values()):
-        assert not entity.schema.abstract, entity
-        write_object(out_file, entity)
-        if idx > 0 and idx % 10000 == 0:
-            log.info("Dumped %d entities...", idx)
+def dump_entities(out_path: str):
+    log.info("Dumping %d entities to: %s", len(ENTITIES), out_path)
+    with open(out_path, "w") as fh:
+        for idx, entity in enumerate(ENTITIES.values()):
+            assert not entity.schema.abstract, entity
+            write_object(fh, entity)
+            if idx > 0 and idx % 10000 == 0:
+                log.info("Dumped %d entities...", idx)
+                fh.flush()
 
 
 def read_rows(zip, file_name):
@@ -271,8 +273,8 @@ def make_row_relationship(row):
 
 @click.command()
 @click.argument("zip_file", type=click.File(mode="rb"))
-@click.argument("out_file", type=click.File(mode="w"))
-def make_db(zip_file, out_file):
+@click.argument("out_path", type=click.Path(writable=True))
+def make_db(zip_file, out_path):
     logging.basicConfig(level=logging.INFO)
     with ZipFile(zip_file, "r") as zip:
         log.info("Loading: nodes-entities.csv...")
@@ -299,7 +301,7 @@ def make_db(zip_file, out_file):
         for row in read_rows(zip, "relationships.csv"):
             make_row_relationship(row)
 
-    dump_entities(out_file)
+    dump_entities(out_path)
 
 
 if __name__ == "__main__":
