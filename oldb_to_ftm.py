@@ -305,7 +305,7 @@ def make_db(zip_file, out_path):
         for row in read_rows(zip_file, "relationships.csv"):
             make_row_relationship(row, fh)
 
-        dump_nodes(fh, out_path)
+        dump_nodes(fh)
 
 
 if __name__ == "__main__":
