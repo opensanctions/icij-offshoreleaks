@@ -1,0 +1,26 @@
+name: build
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Show ref
+        run: |
+          echo "$GITHUB_REF"
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: "3.9"
+      - name: Install dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get install -y -qq libicu-dev wget
+          pip install -r requirements.txt
+      - name: Convert the data
+        run: |
+          make full
