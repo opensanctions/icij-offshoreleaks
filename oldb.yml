@@ -363,15 +363,28 @@ countries:
         - Not identified
         - 'Recorded in leaked files as "fund"'
         - XXX
+        - ok # boomer
+        - SCP
         - "null"
         # now three countries, can't identify which:
         - Netherlands Antilles
+        - Channel Islands
       value: null
     - match: Cayman
       value: Cayman Islands
+    - match: COOKISLANDS
+      value: CK
     - match: Sint Eustatius and Saba Bonaire
       value: BQ
-    - match: State of Delaware
+    - match: ZAM
+      value: ZM
+    - match:
+        - State of Delaware
+        - District of Columbia
+        - USA (South Dakota)
+        - USA (Delaware)
+        - New Hampshire
+        - Unied States
       value: United States of America
     - match: Province of China Taiwan
       value: Taiwan

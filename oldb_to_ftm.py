@@ -122,7 +122,7 @@ def read_rows(zip_path, file_name):
 
 
 def make_row_entity(row, schema):
-    id = row.pop("id", row.pop("_id", None))
+    id = row.pop("id", row.pop("_id", row.pop("node_id", None)))
     proxy = model.make_entity(schema)
     proxy.id = make_entity_id(id)
     if proxy.id is None:
@@ -189,7 +189,8 @@ def make_row_entity(row, schema):
 
 
 def make_row_address(row):
-    id = row.pop("id", row.pop("_id", None))
+    node_id = row.pop("node_id", None)
+    id = row.pop("id", row.pop("_id", node_id))
     proxy = model.make_entity("Address")
     proxy.id = make_entity_id(id)
     proxy.add("full", row.pop("address", None))
@@ -205,7 +206,7 @@ def make_row_address(row):
     proxy.add("summary", row.pop("valid_until", None))
     proxy.add("remarks", row.pop("note", None))
     proxy.add("publisher", row.pop("sourceID", None))
-    proxy.add("recordId", row.pop("node_id"))
+    proxy.add("recordId", node_id)
 
     audit_row(row)
     emit_entity(proxy)
@@ -217,10 +218,10 @@ LINK_SEEN = set()
 def make_row_relationship(row, fh):
     # print(row)
     # return
-    _type = row.pop("_type")
-    _start = row.pop("_start")
+    _type = row.pop("rel_type")
+    _start = row.pop("node_id_start")
     start = make_entity_id(_start)
-    _end = row.pop("_end")
+    _end = row.pop("node_id_end")
     link = row.pop("link", None)
     source_id = row.pop("sourceID", None)
     end = make_entity_id(_end)
