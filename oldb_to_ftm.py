@@ -26,6 +26,7 @@ DATE_FORMATS = [
     "%d.%m.%Y",
     "%d/%m/%y",
 ]
+NODE_URL = "https://offshoreleaks.icij.org/nodes/%s"
 
 
 @cache
@@ -136,7 +137,9 @@ def make_row_entity(row, schema):
     original_name = row.pop("original_name", None)
     if original_name != name:
         proxy.add("previousName", original_name)
-    proxy.add("icijId", row.pop("node_id", None))
+    node_id = row.pop("node_id", None)
+    proxy.add("icijId", node_id)
+    proxy.add("sourceUrl", NODE_URL % node_id)
     proxy.add("legalForm", row.pop("company_type", None))
     proxy.add("legalForm", row.pop("type", None))
     date = parse_date(row.pop("incorporation_date", None))
@@ -180,8 +183,7 @@ def make_row_entity(row, schema):
     proxy.add("country", countries)
     proxy.add("program", row.pop("service_provider", None))
 
-    if schema == "Company":
-        proxy.add("ibcRuc", row.pop("ibcRUC", None))
+    proxy.add("registrationNumber", row.pop("ibcRUC", None), quiet=True)
 
     row.pop("internal_id", None)
     audit_row(row)
