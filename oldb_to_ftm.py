@@ -208,7 +208,6 @@ def make_row_address(row):
     proxy.add("summary", row.pop("valid_until", None))
     proxy.add("remarks", row.pop("note", None))
     proxy.add("publisher", row.pop("sourceID", None))
-    proxy.add("recordId", node_id)
 
     audit_row(row)
     emit_entity(proxy)
