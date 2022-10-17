@@ -123,7 +123,7 @@ def read_rows(zip_path, file_name):
 
 
 def make_row_entity(row, schema):
-    id = row.pop("id", row.pop("_id", row.pop("node_id", None)))
+    node_id = row.pop("id", row.pop("_id", row.pop("node_id", None)))
     proxy = model.make_entity(schema)
     proxy.id = make_entity_id(id)
     if proxy.id is None:
@@ -137,7 +137,7 @@ def make_row_entity(row, schema):
     original_name = row.pop("original_name", None)
     if original_name != name:
         proxy.add("previousName", original_name)
-    node_id = row.pop("node_id", None)
+
     proxy.add("icijId", node_id)
     proxy.add("sourceUrl", NODE_URL % node_id)
     proxy.add("legalForm", row.pop("company_type", None))
