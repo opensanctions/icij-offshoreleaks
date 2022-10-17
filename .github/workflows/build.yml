@@ -30,4 +30,4 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          aws s3 cp --quiet --no-progress --cache-control "public, max-age=84600" --metadata-directive REPLACE --acl public-read data/full-oldb.ijson s3://data.opensanctions.org/contrib/icij-offshoreleaks/full-oldb.json
+          aws s3 cp --quiet --no-progress --cache-control "public, max-age=84600" --metadata-directive REPLACE --acl public-read data/data/fragments.json s3://data.opensanctions.org/contrib/icij-offshoreleaks/full-oldb.json
